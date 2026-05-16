@@ -91,7 +91,6 @@ with st.form("share_form"):
         img = Image.open(share_img)
         result = analyze_outfit(img)
 
-        # 👉 存到 Supabase
         supabase.table("posts").insert({
             "title": title,
             "description": desc,
@@ -104,16 +103,20 @@ with st.form("share_form"):
         st.success("分享成功（已存到雲端）！")
 
 # =========================
-# 🔥 社群牆（Supabase讀取）
+# 🔥 社群牆（已修正重點）
 # =========================
 st.divider()
 st.header("🔥 大家都在穿")
 
-data = supabase.table("posts").select("*").order("id", desc=True).execute()
+# ✅ 這裡改成「安全穩定寫法」（不使用 order）
+data = supabase.table("posts").select("*").execute()
 
 if data.data:
 
-    for post in data.data:
+    # 👉 Python 端排序（避免 Supabase SDK bug）
+    posts = sorted(data.data, key=lambda x: x["id"], reverse=True)
+
+    for post in posts:
 
         st.subheader(post["title"])
         st.write(post["description"])
