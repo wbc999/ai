@@ -1,19 +1,26 @@
 import streamlit as st
 from PIL import Image
 import urllib.parse
+from supabase import create_client
 
 # =========================
-# 🧠 穿搭分析（免費簡化AI）
+# 🔐 Supabase 連線
+# =========================
+supabase = create_client(
+    st.secrets["SUPABASE_URL"],
+    st.secrets["SUPABASE_KEY"]
+)
+
+# =========================
+# 🧠 穿搭分析（簡化AI）
 # =========================
 def analyze_outfit(image):
-    # 這裡用穩定分類（避免 API 卡住）
     return {
         "style": "streetwear casual outfit",
         "top": "oversized t shirt",
         "bottom": "loose jeans pants",
         "shoes": "sneakers shoes"
     }
-
 
 # =========================
 # 🔎 電商搜尋
@@ -28,32 +35,18 @@ def search_links(query):
         "Google": f"https://www.google.com/search?tbm=shop&q={q}",
     }
 
-
 # =========================
 # 🌐 UI
 # =========================
 st.set_page_config(page_title="AI 穿搭分析商城", layout="wide")
 
-st.markdown("""
-<style>
-.card {
-    padding:15px;
-    border-radius:15px;
-    background:#111;
-    margin-bottom:10px;
-}
-.title {
-    font-size:32px;
-    font-weight:800;
-    text-align:center;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown("<div class='title'>🧠 AI 穿搭分析 + 電商搜尋</div>", unsafe_allow_html=True)
+st.title("🧠 AI 穿搭分析 + 電商搜尋 + 社群")
 
 uploaded = st.file_uploader("📸 上傳穿搭照片", type=["jpg", "png", "jpeg"])
 
+# =========================
+# 🔍 穿搭分析區
+# =========================
 if uploaded:
 
     image = Image.open(uploaded)
@@ -63,13 +56,13 @@ if uploaded:
 
     st.success(f"風格：{result['style']}")
 
-    st.subheader("👕 分析結果")
-
     items = {
         "上衣": result["top"],
         "褲子": result["bottom"],
         "鞋子": result["shoes"]
     }
+
+    st.subheader("👕 分析結果")
 
     for part, keyword in items.items():
 
@@ -78,80 +71,73 @@ if uploaded:
         links = search_links(keyword)
 
         for name, url in links.items():
+            st.markdown(f"- [{name}]({url})")
 
-            st.markdown(f"""
-            <div class="card">
-                <b>{name}</b><br>
-                {keyword}<br>
-                <a href="{url}" target="_blank">👉 查看商品</a>
-            </div>
-            """, unsafe_allow_html=True)
 # =========================
-# 👥 穿搭分享社群
+# 👥 分享穿搭（Supabase）
 # =========================
 st.divider()
 st.header("👥 分享你的穿搭")
 
-# 初始化分享列表
-if "posts" not in st.session_state:
-    st.session_state.posts = []
-
 with st.form("share_form"):
     title = st.text_input("穿搭名稱")
     desc = st.text_area("穿搭介紹")
-    share_img = st.file_uploader(
-        "上傳分享圖片",
-        type=["jpg", "png", "jpeg"],
-        key="share_img"
-    )
+    share_img = st.file_uploader("上傳分享圖片", type=["jpg", "png", "jpeg"])
 
     submit = st.form_submit_button("🚀 分享")
 
     if submit and share_img:
-        img = Image.open(share_img)
 
+        img = Image.open(share_img)
         result = analyze_outfit(img)
 
-        items = {
-            "上衣": result["top"],
-            "褲子": result["bottom"],
-            "鞋子": result["shoes"]
-        }
-
-        st.session_state.posts.append({
+        # 👉 存到 Supabase
+        supabase.table("posts").insert({
             "title": title,
-            "desc": desc,
-            "image": img,
+            "description": desc,
             "style": result["style"],
-            "items": items
-        })
+            "top": result["top"],
+            "bottom": result["bottom"],
+            "shoes": result["shoes"]
+        }).execute()
 
-        st.success("分享成功！")
+        st.success("分享成功（已存到雲端）！")
 
 # =========================
-# 社群穿搭牆
+# 🔥 社群牆（Supabase讀取）
 # =========================
 st.divider()
 st.header("🔥 大家都在穿")
 
-for post in reversed(st.session_state.posts):
+data = supabase.table("posts").select("*").order("id", desc=True).execute()
 
-    st.subheader(post["title"])
-    st.write(post["desc"])
-    st.image(post["image"], width=350)
+if data.data:
 
-    st.success(f"風格：{post['style']}")
+    for post in data.data:
 
-    for part, keyword in post["items"].items():
+        st.subheader(post["title"])
+        st.write(post["description"])
 
-        st.markdown(f"### {part}：{keyword}")
+        st.success(f"風格：{post['style']}")
 
-        links = search_links(keyword)
+        items = {
+            "上衣": post["top"],
+            "褲子": post["bottom"],
+            "鞋子": post["shoes"]
+        }
 
-        cols = st.columns(4)
+        for part, keyword in items.items():
+            st.markdown(f"### {part}：{keyword}")
 
-        for i, (shop, url) in enumerate(links.items()):
-            with cols[i]:
-                st.link_button(shop, url)
+            links = search_links(keyword)
 
-    st.divider()
+            cols = st.columns(4)
+
+            for i, (shop, url) in enumerate(links.items()):
+                with cols[i]:
+                    st.link_button(shop, url)
+
+        st.divider()
+
+else:
+    st.info("還沒有任何分享，快來當第一個穿搭達人🔥")
