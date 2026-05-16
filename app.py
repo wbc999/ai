@@ -109,7 +109,7 @@ with st.form("share_form"):
 st.divider()
 st.header("🔥 大家都在穿")
 
-data = supabase.table("posts").select("*").order("id", desc=True).execute()
+data = supabase.table("posts").select("*").order("id", ascending=False).execute()
 
 if data.data:
 
