@@ -45,8 +45,8 @@ def search_links(query):
 
     return {
         "Shopee": f"https://shopee.tw/search?keyword={q}",
-        "momo": f"https://www.momoshop.com.tw/search/searchShop.jsp?keyword={q}",
-        "PChome": f"https://ecshweb.pchome.com.tw/search/v3.3/?q={q}",
+        "淘寶": f"https://world.taobao.com/search/search.htm?_ksTS=1&q={q}",
+        "SHEIN": f"https://www.shein.com/search?keyword={q}",
         "Google": f"https://www.google.com/search?tbm=shop&q={q}",
     }
 
