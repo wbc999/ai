@@ -82,7 +82,7 @@ st.header("👥 分享你的穿搭")
 with st.form("share_form"):
     title = st.text_input("穿搭名稱")
     desc = st.text_area("穿搭介紹")
-    share_img = st.file_uploader("上傳分享圖片", type=["jpg", "png", "jpeg"])
+    share_img = st.file_uploader("上傳分享圖片", type=["jpg", "png", "jpeg"], key="share")
 
     submit = st.form_submit_button("🚀 分享")
 
@@ -103,17 +103,20 @@ with st.form("share_form"):
         st.success("分享成功（已存到雲端）！")
 
 # =========================
-# 🔥 社群牆（已修正重點）
+# 🔥 社群牆（完整修正版）
 # =========================
 st.divider()
 st.header("🔥 大家都在穿")
 
-# ✅ 這裡改成「安全穩定寫法」（不使用 order）
+# 🔥 先抓資料（只做一次）
 data = supabase.table("posts").select("*").execute()
+
+# 🔥 DEBUG（一定要先看這行）
+st.write("DEBUG:", data.data)
 
 if data.data:
 
-    # 👉 Python 端排序（避免 Supabase SDK bug）
+    # Python 排序（避免 Supabase order bug）
     posts = sorted(data.data, key=lambda x: x["id"], reverse=True)
 
     for post in posts:
@@ -130,6 +133,7 @@ if data.data:
         }
 
         for part, keyword in items.items():
+
             st.markdown(f"### {part}：{keyword}")
 
             links = search_links(keyword)
@@ -144,6 +148,3 @@ if data.data:
 
 else:
     st.info("還沒有任何分享，快來當第一個穿搭達人🔥")
-data = supabase.table("posts").select("*").execute()
-
-st.write(data.data)
