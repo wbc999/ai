@@ -2,6 +2,7 @@ import streamlit as st
 from PIL import Image
 import urllib.parse
 from supabase import create_client
+import uuid
 
 # =========================
 # 🔐 Supabase 連線
@@ -10,6 +11,20 @@ supabase = create_client(
     st.secrets["SUPABASE_URL"],
     st.secrets["SUPABASE_KEY"]
 )
+
+# =========================
+# 📸 上傳圖片到 Storage
+# =========================
+def upload_image(file):
+    file_name = f"{uuid.uuid4()}.jpg"
+
+    supabase.storage.from_("images").upload(
+        file_name,
+        file.getvalue(),
+        {"content-type": "image/jpeg"}
+    )
+
+    return supabase.storage.from_("images").get_public_url(file_name)
 
 # =========================
 # 🧠 穿搭分析（簡化AI）
@@ -65,7 +80,6 @@ if uploaded:
     st.subheader("👕 分析結果")
 
     for part, keyword in items.items():
-
         st.markdown(f"## {part}：{keyword}")
 
         links = search_links(keyword)
@@ -74,7 +88,7 @@ if uploaded:
             st.markdown(f"- [{name}]({url})")
 
 # =========================
-# 👥 分享穿搭（Supabase）
+# 👥 分享穿搭（Supabase + Storage）
 # =========================
 st.divider()
 st.header("👥 分享你的穿搭")
@@ -91,36 +105,42 @@ with st.form("share_form"):
         img = Image.open(share_img)
         result = analyze_outfit(img)
 
+        # 🚀 上傳圖片到 Supabase Storage
+        image_url = upload_image(share_img)
+
         supabase.table("posts").insert({
             "title": title,
             "description": desc,
+            "image_url": image_url,
             "style": result["style"],
             "top": result["top"],
             "bottom": result["bottom"],
             "shoes": result["shoes"]
         }).execute()
 
-        st.success("分享成功（已存到雲端）！")
+        st.success("分享成功（已上傳雲端圖片）！")
 
 # =========================
-# 🔥 社群牆（完整修正版）
+# 🔥 社群牆
 # =========================
 st.divider()
 st.header("🔥 大家都在穿")
 
-# 🔥 先抓資料（只做一次）
 data = supabase.table("posts").select("*").execute()
 
 if data.data:
 
-    # Python 排序（避免 Supabase order bug）
     posts = sorted(data.data, key=lambda x: x["id"], reverse=True)
 
     for post in posts:
 
         st.subheader(post["title"])
-        st.write(post["description"])
 
+        # 📸 顯示圖片（重點）
+        if post.get("image_url"):
+            st.image(post["image_url"], width=300)
+
+        st.write(post["description"])
         st.success(f"風格：{post['style']}")
 
         items = {
