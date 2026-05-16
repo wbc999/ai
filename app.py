@@ -111,9 +111,6 @@ st.header("🔥 大家都在穿")
 # 🔥 先抓資料（只做一次）
 data = supabase.table("posts").select("*").execute()
 
-# 🔥 DEBUG（一定要先看這行）
-st.write("DEBUG:", data.data)
-
 if data.data:
 
     # Python 排序（避免 Supabase order bug）
