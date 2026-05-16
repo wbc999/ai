@@ -144,3 +144,6 @@ if data.data:
 
 else:
     st.info("還沒有任何分享，快來當第一個穿搭達人🔥")
+data = supabase.table("posts").select("*").execute()
+
+st.write(data.data)
